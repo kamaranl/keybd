@@ -1,3 +1,5 @@
+//go:build !(windows || linux)
+
 package keymap
 
 const KeyNotMapped = -1
