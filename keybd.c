@@ -1,6 +1,5 @@
-#include "key_ev.h"
+#include "keybd.h"
 
-#if IS_DARWIN
 #include <ApplicationServices/ApplicationServices.h>
 
 void SendKey(int key, bool shift)
@@ -39,4 +38,3 @@ void SendKey(int key, bool shift)
         usleep(10 * ms);
     }
 }
-#endif
