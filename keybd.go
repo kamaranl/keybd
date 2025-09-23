@@ -1,4 +1,4 @@
-package keymap
+package keybd
 
 import "time"
 

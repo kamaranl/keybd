@@ -1,6 +1,6 @@
 //go:build !(windows || linux)
 
-package keymap
+package keybd
 
 /*
 #cgo CFLAGS: -x objective-c -fmodules
@@ -95,8 +95,8 @@ func typeStr(str string) (err error) {
 		cStr,
 		C.int(Global.ModPressDuration/time.Microsecond), // modPressDur
 		C.int(Global.KeyPressDuration/time.Microsecond), // keyPressDur
-		C.int(Global.KeyDelay/time.Microsecond), // keyDelay
-		C.int(Global.TabSize), // tabSize
+		C.int(Global.KeyDelay/time.Microsecond),         // keyDelay
+		C.int(Global.TabSize),                           // tabSize
 	); r1 == 0 {
 		return fmt.Errorf("%v", C.LastErrorMessage)
 	}

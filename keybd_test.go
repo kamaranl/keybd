@@ -1,4 +1,4 @@
-package keymap_test
+package keybd_test
 
 import (
 	"strings"
@@ -44,7 +44,7 @@ function uuidgen
 var testStr = "Hello World!"
 
 var testCode = `
-package keymap_test
+package keybd_test
 
 import (
 	"fmt"

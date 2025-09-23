@@ -1,13 +1,13 @@
 //go:build !(darwin || linux)
 
-package keymap
+package keybd
 
 import (
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/kamaranl/keymap/winapi"
+	"github.com/kamaranl/keybd/winapi"
 )
 
 const (
