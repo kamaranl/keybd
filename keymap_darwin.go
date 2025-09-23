@@ -11,7 +11,6 @@ import "C"
 import (
 	"context"
 	"fmt"
-	"time"
 	"unsafe"
 )
 
@@ -65,7 +64,13 @@ func KeyIsDown(vk uint) bool {
 }
 
 func TypeStr(str string) (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) // global TypeStr timeout
+	if len(str) == 0 {
+		return nil
+	} else if len(str) > Global.MaxCharacters {
+		return fmt.Errorf("Exceeds max character limit")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), Global.TypeStringTimeout)
 	defer cancel()
 
 	done := make(chan error, 1)
@@ -82,21 +87,15 @@ func TypeStr(str string) (err error) {
 }
 
 func typeStr(str string) (err error) {
-	if len(str) == 0 {
-		return nil
-	} else if len(str) > 5000 { // global max chars
-		return fmt.Errorf("TypeStr: Exceeds max character limit")
-	}
-
 	cStr := C.CString(str)
 	defer C.free(unsafe.Pointer(cStr))
 
 	if r1 := C.TypeStr(
 		cStr,
-		C.int((2*time.Millisecond)/time.Microsecond), // global modPressDur
-		C.int((2*time.Millisecond)/time.Microsecond), // global keyPressDur
-		C.int((2*time.Millisecond)/time.Microsecond), // global keyDelay
-		C.int(6), // global tabSize
+		C.int(Global.ModPressDuration), // modPressDur
+		C.int(Global.KeyPressDuration), // keyPressDur
+		C.int(Global.KeyDelay), // keyDelay
+		C.int(Global.TabSize), // tabSize
 	); r1 == 0 {
 		return fmt.Errorf("%v", C.LastErrorMessage)
 	}

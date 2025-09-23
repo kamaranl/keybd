@@ -129,7 +129,7 @@ func TypeStr(str string) (err error) {
 	if len(str) == 0 {
 		return nil
 	} else if len(str) > Global.MaxCharacters {
-		return fmt.Errorf("TypeStr: Exceeds max character limit")
+		return fmt.Errorf("Exceeds max character limit")
 	}
 
 	var (
