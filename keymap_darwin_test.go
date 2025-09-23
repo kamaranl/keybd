@@ -2,38 +2,45 @@
 
 package keymap_test
 
-// import (
-// 	"testing"
+import (
+	"fmt"
+	"testing"
 
-// 	"github.com/kamaranl/keymap"
-// )
+	"github.com/kamaranl/keymap"
+)
 
-// func TestSendKey(t *testing.T) {
-// 	setup()
+func Test_GetKeyboardInfo(t *testing.T) {
+	kbInfo := keymap.GetKeyboardInfo()
 
-// 	t.Run("sends a valid key", func(t *testing.T) {
-// 		key, shift := keymap.CharToVKey('K')
-// 		keymap.SendKey(key, shift)
-// 	})
+	fmt.Printf("layout=%v\ntype=%v", kbInfo.Layout, kbInfo.Kind)
+}
 
-// 	t.Run("sends an invalid key", func(t *testing.T) {
-// 		key, shift := keymap.CharToVKey('†')
-// 		if err := keymap.SendKey(key, shift); err == nil {
-// 			t.Errorf("expected an error but got nil")
-// 		}
-// 	})
-// }
+func Test_CharToVK(t *testing.T) {
+	// alt := "ß"
+	// shiftAlt := "Í"
 
-// func TestTypeStr(t *testing.T) {
-// 	setup()
+	for _, r := range " \t\r\n" {
+		kbInfo := keymap.GetKeyboardInfo()
+		err, vk, mods := keymap.CharToVKAndMods(r, kbInfo)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+		} else {
+			fmt.Printf("%q  (%d): 0x%x (%d) | 0x%x\n", r, r, vk, vk, mods)
+		}
+	}
+}
 
-// 	t.Run("types test string", func(t *testing.T) {
-// 		keymap.TypeStr(testStr)
-// 	})
+func Test_KeyIsDown(t *testing.T) {
+	r1 := keymap.KeyIsDown(56)
+	print(r1)
+}
 
-// 	t.Run("types test code block", func(t *testing.T) {
-// 		keymap.GlobalOptions.TabsToSpaces = true
-// 		keymap.TypeStr(testCode)
-// 	})
+func Test_TypeStr(t *testing.T) {
+	if err := keymap.TypeStr(multiLineStr); err != nil {
+		fmt.Printf("%v\n", err)
+	}
+}
 
-// }
+func init() {
+	setup()
+}
