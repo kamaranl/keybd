@@ -4,8 +4,8 @@ package keybd
 
 /*
 #cgo CFLAGS: -x objective-c -fmodules
-#cgo LDFLAGS: -framework Carbon -framework ApplicationServices -framework Cocoa
-#include "keybd.h"
+#cgo LDFLAGS: -framework Carbon
+#import "keybd_darwin.h"
 */
 import "C"
 import (
