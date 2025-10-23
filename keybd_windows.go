@@ -1,4 +1,4 @@
-//go:build !(darwin || linux)
+//go:build windows
 
 package keybd
 
@@ -21,9 +21,9 @@ const (
 )
 
 const (
-	ModLShift ModifierMask = 1 << iota //0x01
-	ModLCtrl                           //0x02
-	ModLAlt                            //0x04
+	ModLShift ModifierMask = 1 << iota // 0x01
+	ModLCtrl                           // 0x02
+	ModLAlt                            // 0x04
 )
 
 var StandardMods = []ModifierSet{

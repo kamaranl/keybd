@@ -74,5 +74,4 @@ func countdown(seconds int) {
 
 func setup() {
 	countdown(5)
-
 }

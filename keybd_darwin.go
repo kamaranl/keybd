@@ -1,4 +1,4 @@
-//go:build !(windows || linux)
+//go:build darwin
 
 package keybd
 
@@ -8,6 +8,7 @@ package keybd
 #import "keybd_darwin.h"
 */
 import "C"
+
 import (
 	"context"
 	"fmt"
