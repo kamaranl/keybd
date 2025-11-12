@@ -1,98 +1,134 @@
 #import <Carbon/Carbon.h>
 
+/*!
+    @var LastErrorMessage
+    @abstract Declaration for a method's last error message to be written to.
+*/
 char LastErrorMessage[256];
+
+/*!
+    @const kVK_None
+    @abstract An unassigned virtual key.
+*/
 const CGKeyCode kVK_None = 0xFFFF;
 
-enum {
-  ModShift = 0x2,
-  ModOption = 0x8,
-};
+/*!
+    @const kModShift
+    @abstract The mask for the Shift key.
+*/
+const UInt32 kModShift = 0x2;
 
+/*!
+    @const kModOption
+    @abstract The mask for the Option key.
+*/
+const UInt32 kModOption = 0x8;
+
+/*!
+    @typedef KeyboardLayoutInfo
+    @abstract Contains the local keyboard layout and type.
+    @field kbLayout Specifies the keyboard layout.
+    @field kbType Specifies the keyboard type.
+*/
 typedef struct {
-  UCKeyboardLayout *layout;
-  int kind;
-} KeyboardInfo;
+  UCKeyboardLayout *kbLayout;
+  int kbType;
+} KeyboardLayoutInfo;
 
+/*!
+    @typedef KeyTranslation
+    @abstract Contains a virtual key code and its modifier mask.
+    @field vk Specifies the virtual key code.
+    @field mods Specifies the modifier mask.
+*/
 typedef struct {
   CGKeyCode vk;
   UInt32 mods;
-} KeyMapping;
+} KeyTranslation;
 
+/*!
+    @typedef Modifier
+    @abstract Contains a modifier's mask, virtual key code, and event flag.
+    @field mask Specifies the modifier's mask.
+    @field vk Specifies the modifier's virtual key code.
+    @field flag Specifies the modifier's event flag.
+*/
 typedef struct {
   UInt32 mask;
-  CGKeyCode key;
+  CGKeyCode vk;
   CGEventFlags flag;
-} ModifierSet;
+} Modifier;
 
-ModifierSet standardMods[2] = {
-    {.mask = ModShift, .key = kVK_Shift, .flag = kCGEventFlagMaskShift},
-    {.mask = ModOption, .key = kVK_Option, .flag = kCGEventFlagMaskAlternate},
+/*!
+    @var StandardMods
+    @abstract Modifier array of the two most common modifier keys on MacOS.
+*/
+Modifier StandardMods[2] = {
+    {.mask = kModShift, .vk = kVK_Shift, .flag = kCGEventFlagMaskShift},
+    {.mask = kModOption, .vk = kVK_Option, .flag = kCGEventFlagMaskAlternate},
 };
 
-/**
- *
- *
- * Maps a Unicode character to its corresponding virtual key code and modifier
- * mask for the current keyboard layout.
- *
- * @param c      The Unicode character to map.
- * @param kbInfo Keyboard layout information.
- * @return       KeyMapping struct with virtual key code and modifiers.
- */
-KeyMapping CharToVKAndMods(UniChar c, KeyboardInfo kbInfo) {
-  // prioritize whitespace
+/*!
+    @function TranslateChar
+    @abstract Translates a character into its virtual key code and modifier
+   mask.
+    @param c
+        Character to translate.
+    @param kli
+        Keyboard layout information.
+    @returns
+        KeyTranslation
+*/
+KeyTranslation TranslateChar(UniChar c, KeyboardLayoutInfo kli) {
   switch (c) {
   case '\r':
-    return (KeyMapping){.vk = kVK_None, .mods = 0};
+    return (KeyTranslation){.vk = kVK_None, .mods = 0};
   case '\n':
-    return (KeyMapping){.vk = kVK_Return, .mods = 0};
+    return (KeyTranslation){.vk = kVK_Return, .mods = 0};
   case '\t':
-    return (KeyMapping){.vk = kVK_Tab, .mods = 0};
+    return (KeyTranslation){.vk = kVK_Tab, .mods = 0};
   case ' ':
-    return (KeyMapping){.vk = kVK_Space, .mods = 0};
+    return (KeyTranslation){.vk = kVK_Space, .mods = 0};
   }
 
-  KeyMapping keymap = {.vk = kVK_None, .mods = 0};
+  KeyTranslation keymap = {.vk = kVK_None, .mods = 0};
 
-  // loop through modifier bits
   for (UInt32 mods = 0; mods < (1 << 4); mods++) {
-    // loop through keys
     for (int key = 0; key < 128; key++) {
       UniChar chars[4];
       UniCharCount len = 0;
       UInt32 deadKeyState = 0;
-      OSStatus status = UCKeyTranslate(
-          kbInfo.layout, key, kUCKeyActionDown, mods, kbInfo.kind,
-          kUCKeyTranslateNoDeadKeysBit, &deadKeyState,
-          sizeof(chars) / sizeof(chars[0]), &len, chars);
+      OSStatus status =
+          UCKeyTranslate(kli.kbLayout, key, kUCKeyActionDown, mods, kli.kbType,
+                         kUCKeyTranslateNoDeadKeysBit, &deadKeyState,
+                         sizeof(chars) / sizeof(chars[0]), &len, chars);
 
       if (status == noErr && len > 0 && chars[0] == c) {
         keymap.vk = key;
         keymap.mods = mods;
         return keymap;
       }
-    } // for key
-  }   // for mods
+    }
+  }
 
-  return keymap; // not available
+  return keymap;
 }
 
-/**
- *
- *
- * Retrieves the current keyboard layout and type information.
- *
- * @return KeyboardInfo struct with layout pointer and keyboard kind.
- */
-KeyboardInfo GetKeyboardInfo() {
-  KeyboardInfo info = {0};
+/*!
+    @function GetKeyboardLayoutInfo
+    @abstract Identifies the local keyboard layout and type.
+    @result
+        KeyboardLayoutInfo
+*/
+KeyboardLayoutInfo GetKeyboardLayoutInfo() {
+  KeyboardLayoutInfo info = {0};
 
   TISInputSourceRef layoutRef = TISCopyCurrentKeyboardLayoutInputSource();
   CFDataRef layoutData = (CFDataRef)TISGetInputSourceProperty(
       layoutRef, kTISPropertyUnicodeKeyLayoutData);
 
-  info.layout = (UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
-  info.kind = LMGetKbdType();
+  info.kbLayout = (UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
+  info.kbType = LMGetKbdType();
 
   if (layoutRef)
     CFRelease(layoutRef);
@@ -100,23 +136,26 @@ KeyboardInfo GetKeyboardInfo() {
   return info;
 }
 
-/**
- *
- *
- * Simulates a key press or release event for a given key code and modifier
- * flags.
- *
- * @param key     Virtual key code.
- * @param flags   Modifier flags (e.g., shift, option).
- * @param keyDown True for key press, false for key release.
- * @return        1 on success, 0 on failure.
- */
-int KeyAction(CGKeyCode key, CGEventFlags flags, bool keyDown) {
+/*!
+    @function KeyAction
+    @abstract Creates and posts a key event.
+    @param vk
+        The virtual key code to post.
+    @param flags
+        The modifier event flags to post with the virtual key.
+    @param keyDown
+        Specifies a key-down event.
+    @return
+        1: Success | 0: Failure
+    @var LastErrorMessage
+        The last error message is populated if the call fails.
+*/
+int KeyAction(CGKeyCode vk, CGEventFlags flags, bool keyDown) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
            "Error performing KeyAction with down=%s key=%d flags=%llu\n",
-           keyDown ? "true" : "false", key, flags);
+           keyDown ? "true" : "false", vk, flags);
 
-  CGEventRef event = CGEventCreateKeyboardEvent(NULL, key, keyDown);
+  CGEventRef event = CGEventCreateKeyboardEvent(NULL, vk, keyDown);
   if (!event)
     return 0;
 
@@ -127,107 +166,114 @@ int KeyAction(CGKeyCode key, CGEventFlags flags, bool keyDown) {
   return 1;
 }
 
-/**
- *
- *
- * Checks if a specific key is currently pressed down.
- *
- * @param key Virtual key code.
- * @return    1 if key is down, 0 otherwise.
- */
-int KeyIsDown(CGKeyCode key) {
-  return CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, key) ? 1 : 0;
+/*!
+    @function KeyIsDown
+    @abstract Retrieves the current "down" state of vk.
+    @param vk
+        The virtual key code to check.
+    @return
+        1: Success | 0: Failure
+*/
+int KeyIsDown(CGKeyCode vk) {
+  return CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, vk) ? 1 : 0;
 }
 
-/**
- *
- *
- * Simulates a key press event for a given key code and modifier flags.
- *
- * @param key   Virtual key code.
- * @param flags Modifier flags.
- * @return      1 on success, 0 on failure.
- */
-int KeyPress(CGKeyCode key, CGEventFlags flags) {
+/*!
+    @function KeyPress
+    @abstract Posts a key press event to the system.
+    @param vk
+        The virtual key code to post.
+    @param flags
+        The modifier event flags to post with the virtual key.
+    @return
+        1: Success | 0: Failure
+    @var LastErrorMessage
+        The last error message is populated if the call fails.
+*/
+int KeyPress(CGKeyCode vk, CGEventFlags flags) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error performing KeyPress with key=%d flags=%llu", key, flags);
-  return KeyAction(key, flags, true);
+           "Error performing KeyPress with key=%d flags=%llu", vk, flags);
+  return KeyAction(vk, flags, true);
 }
 
-/**
- *
- *
- * Simulates a key release event for a given key code and modifier flags.
- *
- * @param key   Virtual key code.
- * @param flags Modifier flags.
- * @return      1 on success, 0 on failure.
- */
-int KeyRelease(CGKeyCode key, CGEventFlags flags) {
+/*!
+    @function KeyRelease
+    @abstract Posts a key release event to the system.
+    @param vk
+        The virtual key code to post.
+    @param flags
+        The modifier event flags to post with the virtual key.
+    @return
+        1: Success | 0: Failure
+    @var LastErrorMessage
+        The last error message is populated if the call fails.
+*/
+int KeyRelease(CGKeyCode vk, CGEventFlags flags) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error performing KeyRelease with key=%d flags=%llu", key, flags);
-  return KeyAction(key, flags, false);
+           "Error performing KeyRelease with key=%d flags=%llu", vk, flags);
+  return KeyAction(vk, flags, false);
 }
 
-/**
- *
- *
- * Simulates a key press followed by a key release, with an optional delay.
- *
- * @param key         Virtual key code.
- * @param flags       Modifier flags.
- * @param keyPressDur Microseconds to hold the key down.
- * @return            1 on success, 0 on failure.
- */
-int KeyPressAndRelease(CGKeyCode key, CGEventFlags flags, int keyPressDur) {
+/*!
+    @function KeyPressAndRelease
+    @abstract Performs a key press & release with a pause in between.
+    @param vk
+        The virtual key code to post.
+    @param flags
+        The modifier event flags to post with the virtual key.
+    @return
+        1: Success | 0: Failure
+    @var LastErrorMessage
+        The last error message is populated if the call fails.
+*/
+int KeyPressAndRelease(CGKeyCode vk, CGEventFlags flags, int keyPressDur) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error performing KeyPressAndRelease with key=%d flags=%llu", key,
+           "Error performing KeyPressAndRelease with key=%d flags=%llu", vk,
            flags);
 
-  int errCount = KeyPress(key, flags);
+  int errCount = KeyPress(vk, flags);
 
   if (keyPressDur > 0)
     usleep(keyPressDur);
 
-  errCount += KeyRelease(key, flags);
+  errCount += KeyRelease(vk, flags);
 
   return errCount ? 0 : 1;
 }
 
-/**
- *
- *
- * Presses or releases modifier keys (Shift, Option) as needed for the current
- * and next key.
- *
- * @param flags    Pointer to event flags to update.
- * @param mods     Modifier mask for the current key.
- * @param modsNext Modifier mask for the next key.
- * @param keyDown  True to press, false to release.
- * @return         Number of modifier actions performed.
- */
+/*!
+    @function SetMods
+    @abstract Sets a modifier's physical state and event flags.
+    @param flags
+        The modifier event flags to post with the virtual key.
+    @param mods
+        The modifier mask to set state and flags for.
+    @param modsNext
+        The next modifier key to set state and flags for.
+    @param keyDown
+        Specifies a key-down event.
+    @return
+        1: Success | 0: Failure
+    @var LastErrorMessage
+        The last error message is populated if the call fails.
+*/
 int SetMods(CGEventFlags *flags, UInt32 mods, UInt32 modsNext, bool keyDown) {
   int counter = 0;
 
   for (int i = 0; i < 2; i++) {
-    ModifierSet m = standardMods[i];
+    Modifier m = StandardMods[i];
 
-    if ((mods & m.mask) != 0) // mod mask has bits present
-    {
-      *flags |= m.flag; // set flags
+    if ((mods & m.mask) != 0) {
+      *flags |= m.flag;
 
-      if (!keyDown) // key up
-      {
-        if ((modsNext & m.mask) ==
-            0) // next key's mod mask does not have bits present
-        {
-          KeyRelease(m.key, 0);
+      if (!keyDown) {
+        if ((modsNext & m.mask) == 0) {
+          KeyRelease(m.vk, 0);
           counter++;
         }
       } else {
-        if (!KeyIsDown(m.key)) // key is up
-        {
-          KeyPress(m.key, *flags);
+        if (!KeyIsDown(m.vk)) {
+          KeyPress(m.vk, *flags);
           counter++;
         }
       }
@@ -240,59 +286,54 @@ int SetMods(CGEventFlags *flags, UInt32 mods, UInt32 modsNext, bool keyDown) {
   return counter;
 }
 
-/**
- *
- *
- * Types a string by simulating key presses/releases for each character,
- * handling modifiers, delays, and tab-to-space conversion.
- *
- * @param str         The string to type.
- * @param modPressDur Delay after pressing modifiers (microseconds).
- * @param keyPressDur Delay to hold each key down (microseconds).
- * @param keyDelay    Delay between key presses (microseconds).
- * @param tabSize     Number of spaces to substitute for a tab character.
- * @return            1 on success, 0 on failure.
- */
+/*!
+    @function TypeStr
+    @abstract Types the provided string.
+    @param str
+        The string to type.
+    @param modPressDur
+        How long to keep a modifier key pressed before releasing.
+    @param keyPressDur
+        How long to keep a key pressed before releasing.
+    @param keyDelay
+        How long to wait after releasing a key before pressing the next key.
+    @return
+        1: Success | 0: Failure
+*/
 int TypeStr(const char *str, int modPressDur, int keyPressDur, int keyDelay,
             int tabSize) {
   int len = strlen(str);
   int last = len - 1;
   int errCount = 0;
-  KeyboardInfo kbInfo = GetKeyboardInfo();
-  KeyMapping current, next;
+  KeyboardLayoutInfo kbInfo = GetKeyboardLayoutInfo();
+  KeyTranslation current, next;
   usleep(keyDelay);
 
-  // loop through characters in string
   for (size_t i = 0; i < len; i++) {
     UniChar c = str[i];
-    CGEventFlags flags = 0; // reset flags
+    CGEventFlags flags = 0;
 
     if (i == 0)
-      current = CharToVKAndMods(c, kbInfo);
+      current = TranslateChar(c, kbInfo);
 
     if (i < last)
-      next = CharToVKAndMods(str[i + 1], kbInfo);
+      next = TranslateChar(str[i + 1], kbInfo);
     else if (i == last)
-      next = (KeyMapping){0};
+      next = (KeyTranslation){0};
 
-    // press modifiers
     if (SetMods(&flags, current.mods, 0, true))
       usleep(modPressDur);
 
-    // default taps
     int numTaps = 1;
 
-    // to sub spaces for tabs
     if (c == '\t' && tabSize > 0) {
       current.vk = kVK_Space;
       numTaps = tabSize;
     }
 
-    // loop through press + release
     for (int j = 0; j < numTaps; j++)
       errCount += KeyPressAndRelease(current.vk, flags, keyPressDur);
 
-    // release or hold modifiers for next char
     SetMods(&flags, current.mods, next.mods, false);
 
     if (i < last) {
