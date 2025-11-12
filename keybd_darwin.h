@@ -1,4 +1,14 @@
-#import <Carbon/Carbon.h>
+/*!
+    @header KEYBD_H
+    KEYBD_H implements functions that allow manipulation of the keyboard.
+    @language C
+    @updated 2025-11-12
+    @author Kamaran Layne
+*/
+#ifndef KEYBD_H
+#define KEYBD_H
+
+#include <Carbon/Carbon.h>
 
 /*!
     @var LastErrorMessage
@@ -344,3 +354,5 @@ int TypeStr(const char *str, int modPressDur, int keyPressDur, int keyDelay,
 
   return errCount ? 0 : 1;
 }
+
+#endif
