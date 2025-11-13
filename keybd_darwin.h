@@ -162,7 +162,7 @@ KeyboardLayoutInfo GetKeyboardLayoutInfo() {
 */
 int KeyAction(CGKeyCode vk, CGEventFlags flags, bool keyDown) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error performing KeyAction with down=%s key=%d flags=%llu\n",
+           "Error calling KeyAction with down=%s key=%d flags=%llu\n",
            keyDown ? "true" : "false", vk, flags);
 
   CGEventRef event = CGEventCreateKeyboardEvent(NULL, vk, keyDown);
@@ -182,7 +182,7 @@ int KeyAction(CGKeyCode vk, CGEventFlags flags, bool keyDown) {
     @param vk
         The virtual key code to check.
     @return
-        1: Success | 0: Failure
+        1: True | 0: False
 */
 int KeyIsDown(CGKeyCode vk) {
   return CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, vk) ? 1 : 0;
@@ -202,7 +202,7 @@ int KeyIsDown(CGKeyCode vk) {
 */
 int KeyPress(CGKeyCode vk, CGEventFlags flags) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error performing KeyPress with key=%d flags=%llu", vk, flags);
+           "Error calling KeyPress with key=%d flags=%llu", vk, flags);
   return KeyAction(vk, flags, true);
 }
 
@@ -220,12 +220,12 @@ int KeyPress(CGKeyCode vk, CGEventFlags flags) {
 */
 int KeyRelease(CGKeyCode vk, CGEventFlags flags) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error performing KeyRelease with key=%d flags=%llu", vk, flags);
+           "Error calling KeyRelease with key=%d flags=%llu", vk, flags);
   return KeyAction(vk, flags, false);
 }
 
 /*!
-    @function KeyPressAndRelease
+    @function KeyTap
     @abstract Performs a key press & release with a pause in between.
     @param vk
         The virtual key code to post.
@@ -236,17 +236,20 @@ int KeyRelease(CGKeyCode vk, CGEventFlags flags) {
     @var LastErrorMessage
         The last error message is populated if the call fails.
 */
-int KeyPressAndRelease(CGKeyCode vk, CGEventFlags flags, int keyPressDur) {
+int KeyTap(CGKeyCode vk, CGEventFlags flags, int keyPressDur) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error performing KeyPressAndRelease with key=%d flags=%llu", vk,
-           flags);
+           "Error calling KeyTap with key=%d flags=%llu", vk, flags);
 
-  int errCount = KeyPress(vk, flags);
+  int errCount;
+
+  if (!KeyPress(vk, flags))
+    errCount++;
 
   if (keyPressDur > 0)
     usleep(keyPressDur);
 
-  errCount += KeyRelease(vk, flags);
+  if (!KeyRelease(vk, flags))
+    errCount++;
 
   return errCount ? 0 : 1;
 }
@@ -291,7 +294,7 @@ int SetMods(CGEventFlags *flags, UInt32 mods, UInt32 modsNext, bool keyDown) {
   }
 
   snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Unable to perform SetMods with flags=%llu mods=%x", *flags, mods);
+           "Error calling SetMods with flags=%llu mods=%x", *flags, mods);
 
   return counter;
 }
@@ -311,7 +314,7 @@ int SetMods(CGEventFlags *flags, UInt32 mods, UInt32 modsNext, bool keyDown) {
         1: Success | 0: Failure
 */
 int TypeStr(const char *str, int modPressDur, int keyPressDur, int keyDelay,
-            int tabSize) {
+            int tabsToSpaces, int tabSize) {
   int len = strlen(str);
   int last = len - 1;
   int errCount = 0;
@@ -336,13 +339,14 @@ int TypeStr(const char *str, int modPressDur, int keyPressDur, int keyDelay,
 
     int numTaps = 1;
 
-    if (c == '\t' && tabSize > 0) {
+    if (c == '\t' && tabsToSpaces) {
       current.vk = kVK_Space;
       numTaps = tabSize;
     }
 
     for (int j = 0; j < numTaps; j++)
-      errCount += KeyPressAndRelease(current.vk, flags, keyPressDur);
+      if (!KeyTap(current.vk, flags, keyPressDur))
+        errCount++;
 
     SetMods(&flags, current.mods, next.mods, false);
 
