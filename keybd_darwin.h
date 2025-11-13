@@ -23,16 +23,16 @@ char LastErrorMessage[256];
 const CGKeyCode kVK_None = 0xFFFF;
 
 /*!
-    @const kModShift
+    @const kMod_Shift
     @abstract The mask for the Shift key.
 */
-const UInt32 kModShift = 0x2;
+const UInt32 kMod_Shift = 0x2;
 
 /*!
-    @const kModOption
+    @const kMod_Option
     @abstract The mask for the Option key.
 */
-const UInt32 kModOption = 0x8;
+const UInt32 kMod_Option = 0x8;
 
 /*!
     @typedef KeyboardLayoutInfo
@@ -74,8 +74,8 @@ typedef struct {
     @abstract Modifier array of the two most common modifier keys on MacOS.
 */
 Modifier StandardMods[2] = {
-    {.mask = kModShift, .vk = kVK_Shift, .flag = kCGEventFlagMaskShift},
-    {.mask = kModOption, .vk = kVK_Option, .flag = kCGEventFlagMaskAlternate},
+    {.mask = kMod_Shift, .vk = kVK_Shift, .flag = kCGEventFlagMaskShift},
+    {.mask = kMod_Option, .vk = kVK_Option, .flag = kCGEventFlagMaskAlternate},
 };
 
 /*!
