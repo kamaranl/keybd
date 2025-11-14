@@ -2,19 +2,42 @@
     @header KEYBD_H
     KEYBD_H implements functions that allow manipulation of the keyboard.
     @language C
-    @updated 2025-11-12
+    @updated 2025-11-14
     @author Kamaran Layne
 */
 #ifndef KEYBD_H
 #define KEYBD_H
 
 #include <Carbon/Carbon.h>
+#include <stdarg.h>
+#include <string.h>
 
 /*!
     @var LastErrorMessage
     @abstract Declaration for a method's last error message to be written to.
 */
 char LastErrorMessage[256];
+
+/*!
+    @function set_LastErrorMessage
+    @abstract Sets LastErrorMessage
+    @param __format
+        The format template string to print.
+    @param ...args
+        List of args to provide to __format.
+*/
+void set_LastErrorMessage(const char *__format, ...) {
+  char prefix[64] = "Error calling";
+  char message[192];
+  va_list args;
+
+  va_start(args, __format);
+  vsnprintf(message, sizeof(message), __format, args);
+  va_end(args);
+
+  snprintf(LastErrorMessage, sizeof(LastErrorMessage), "%s %s\n", prefix,
+           message);
+}
 
 /*!
     @const kVK_None
@@ -101,6 +124,9 @@ KeyTranslation TranslateChar(UniChar c, KeyboardLayoutInfo kli) {
     return (KeyTranslation){.vk = kVK_Space, .mods = 0};
   }
 
+  set_LastErrorMessage("TranslateChar(c=%c, kli={.kbLayout=%d, .kbType=%d})", c,
+                       kli.kbLayout, kli.kbType);
+
   KeyTranslation keymap = {.vk = kVK_None, .mods = 0};
 
   for (UInt32 mods = 0; mods < (1 << 4); mods++) {
@@ -131,7 +157,7 @@ KeyTranslation TranslateChar(UniChar c, KeyboardLayoutInfo kli) {
         KeyboardLayoutInfo
 */
 KeyboardLayoutInfo GetKeyboardLayoutInfo() {
-  KeyboardLayoutInfo info = {0};
+  KeyboardLayoutInfo info;
 
   TISInputSourceRef layoutRef = TISCopyCurrentKeyboardLayoutInputSource();
   CFDataRef layoutData = (CFDataRef)TISGetInputSourceProperty(
@@ -161,9 +187,8 @@ KeyboardLayoutInfo GetKeyboardLayoutInfo() {
         The last error message is populated if the call fails.
 */
 int KeyAction(CGKeyCode vk, CGEventFlags flags, bool keyDown) {
-  snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error calling KeyAction with down=%s key=%d flags=%llu\n",
-           keyDown ? "true" : "false", vk, flags);
+  set_LastErrorMessage("KeyAction(vk=%d, flags=%llu, keyDown=%s)", vk, flags,
+                       keyDown ? "true" : "false");
 
   CGEventRef event = CGEventCreateKeyboardEvent(NULL, vk, keyDown);
   if (!event)
@@ -201,8 +226,7 @@ int KeyIsDown(CGKeyCode vk) {
         The last error message is populated if the call fails.
 */
 int KeyPress(CGKeyCode vk, CGEventFlags flags) {
-  snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error calling KeyPress with key=%d flags=%llu", vk, flags);
+  set_LastErrorMessage("KeyPress(vk=%d, flags=%llu)", vk, flags);
   return KeyAction(vk, flags, true);
 }
 
@@ -219,8 +243,7 @@ int KeyPress(CGKeyCode vk, CGEventFlags flags) {
         The last error message is populated if the call fails.
 */
 int KeyRelease(CGKeyCode vk, CGEventFlags flags) {
-  snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error calling KeyRelease with key=%d flags=%llu", vk, flags);
+  set_LastErrorMessage("KeyRelease(vk=%d, flags=%llu)", vk, flags);
   return KeyAction(vk, flags, false);
 }
 
@@ -237,8 +260,8 @@ int KeyRelease(CGKeyCode vk, CGEventFlags flags) {
         The last error message is populated if the call fails.
 */
 int KeyTap(CGKeyCode vk, CGEventFlags flags, int keyPressDur) {
-  snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error calling KeyTap with key=%d flags=%llu", vk, flags);
+  set_LastErrorMessage("KeyTap(vk=%d, flags=%llu, keyPressDur=%d)", vk, flags,
+                       keyPressDur);
 
   int errCount;
 
@@ -271,6 +294,9 @@ int KeyTap(CGKeyCode vk, CGEventFlags flags, int keyPressDur) {
         The last error message is populated if the call fails.
 */
 int SetMods(CGEventFlags *flags, UInt32 mods, UInt32 modsNext, bool keyDown) {
+  set_LastErrorMessage("SetMods(*flags=%llu, mods=%x, modsNext=%x, keyDown=%s)",
+                       *flags, mods, modsNext, keyDown ? "true" : "false");
+
   int counter = 0;
 
   for (int i = 0; i < 2; i++) {
@@ -293,9 +319,6 @@ int SetMods(CGEventFlags *flags, UInt32 mods, UInt32 modsNext, bool keyDown) {
     }
   }
 
-  snprintf(LastErrorMessage, sizeof(LastErrorMessage),
-           "Error calling SetMods with flags=%llu mods=%x", *flags, mods);
-
   return counter;
 }
 
@@ -315,6 +338,11 @@ int SetMods(CGEventFlags *flags, UInt32 mods, UInt32 modsNext, bool keyDown) {
 */
 int TypeStr(const char *str, int modPressDur, int keyPressDur, int keyDelay,
             int tabsToSpaces, int tabSize) {
+  set_LastErrorMessage("TypeStr(*str=%.100s, modPressDur=%d, keyPressDur=%d, "
+                       "keyDelay=%d, tabsToSpaces=%d, tabSize=%d)",
+                       str, modPressDur, keyPressDur, keyDelay, tabsToSpaces,
+                       tabSize);
+
   int len = strlen(str);
   int last = len - 1;
   int errCount = 0;
