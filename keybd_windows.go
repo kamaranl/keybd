@@ -29,11 +29,11 @@ const (
 	VSC_UNASSIGNED = 0x200
 )
 
-// Constants for modifier keys.
+// Constants for modifier key masks.
 const (
-	MOD_LSHIFT = 1 << iota // 0x01
-	MOD_LCTRL              // 0x02
-	MOD_LALT               // 0x04
+	MOD_LSHIFT = 1 << iota
+	MOD_LCTRL
+	MOD_LALT
 )
 
 // StandardMods is a [Modifier] slice of the standard modifier keys.
@@ -139,7 +139,7 @@ func KeyRelease(key uint16, flags winapi.KiFlags) error {
 }
 
 // TypeStr types str using the [Global] options and ensures accuracy by
-// attachinig the current thread to the thread of the foreground window and
+// attaching the current thread to the thread of the foreground window and
 // temporary blocking input while attached. A timeout prevents the function call
 // from hanging indefinitely, thus allowing the block lift if the timeout is
 // exceeded.
@@ -242,8 +242,8 @@ func keyEvent(key uint16, flags winapi.KiFlags) []winapi.INPUT_Ki {
 	return []winapi.INPUT_Ki{winapi.NewKeybdInput(ki)}
 }
 
-// setMods iterates through the standard mods and compares them to mods and
-// modsNext in order to report back if modifiers are set in mods or modsNext.
+// setMods sets the modifier key state for the current and next iteration of a
+// modifier key.
 func setMods(flags winapi.KiFlags, mods byte, modsNext byte) (modsSet bool, errCount uint) {
 	var modsSetCount uint
 
