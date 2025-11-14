@@ -1,5 +1,11 @@
 package keybd_test
 
+var testRunes = map[string]rune{
+	"lower": 'k',
+	"upper": 'K',
+	"emoji": '😊',
+}
+
 var testStrings = map[string]string{
 	"shortWord":     "cat",
 	"complexWord":   "Pneumonoultramicroscopicsilicovolcanoconiosis",

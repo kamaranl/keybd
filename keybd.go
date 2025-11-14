@@ -4,6 +4,12 @@ package keybd
 
 import "time"
 
+// Constants for common cross-platform errors.
+const (
+	ErrMaxCharacter = "character limit exceeded"
+	ErrTimeout      = "timeout exceeded"
+)
+
 // Global is a struct that contains settings for changing how some of the
 // functions in [keybd] operate. These settings are initialized upon import.
 var Global struct {
