@@ -146,9 +146,7 @@ func TypeStr(str string) (err error) {
 	defer cancel()
 
 	done := make(chan error, 1)
-	go func() {
-		done <- typeStr(str)
-	}()
+	go func() { done <- typeStr(str) }()
 
 	select {
 	case err := <-done:

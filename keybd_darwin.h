@@ -157,17 +157,21 @@ KeyTranslation TranslateChar(UniChar c, KeyboardLayoutInfo kli) {
         KeyboardLayoutInfo
 */
 KeyboardLayoutInfo GetKeyboardLayoutInfo() {
-  KeyboardLayoutInfo info;
+  KeyboardLayoutInfo info = {0};
 
   TISInputSourceRef layoutRef = TISCopyCurrentKeyboardLayoutInputSource();
+  if (!layoutRef)
+    return info;
+
   CFDataRef layoutData = (CFDataRef)TISGetInputSourceProperty(
       layoutRef, kTISPropertyUnicodeKeyLayoutData);
 
-  info.kbLayout = (UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
-  info.kbType = LMGetKbdType();
+  if (layoutData) {
+    info.kbLayout = (UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
+    info.kbType = LMGetKbdType();
+  }
 
-  if (layoutRef)
-    CFRelease(layoutRef);
+  CFRelease(layoutRef);
 
   return info;
 }
