@@ -2,17 +2,19 @@
 // MacOS and Windows desktops.
 package keybd
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 // Constants for common cross-platform errors.
 const (
+	ErrAborted      = "operation aborted"
 	ErrMaxCharacter = "character limit exceeded"
 	ErrTimeout      = "timeout exceeded"
 )
 
-// Global is a struct that contains settings for changing how some of the
-// functions in [keybd] operate. These settings are initialized upon import.
-var Global struct {
+var (
 	// KeyDelay is how long to wait after releasing a key and before proceeding
 	// with pressing the next key.
 	//
@@ -49,18 +51,25 @@ var Global struct {
 	// Default: 4
 	TabSize int
 
-	// TypeStringTimeout is how long [TypeStr] can run before finally aborting.
-	//
-	// Default: 30s
-	TypeStringTimeout time.Duration
-}
+	// TypeString is a struct that contains specific settings for [TypeStr].
+	// These settings are initialized upon import.
+	TypeString struct {
+		// Timeout is how long [TypeStr] can run before finally aborting.
+		//
+		// Default: 30s
+		Timeout time.Duration
+
+		abort chan struct{}
+		mu    sync.Mutex
+	}
+)
 
 func init() {
-	Global.KeyDelay = 2 * time.Millisecond
-	Global.KeyPressDuration = 2 * time.Millisecond
-	Global.ModPressDuration = 2 * time.Millisecond
-	Global.MaxCharacters = 5000
-	Global.TabsToSpaces = false
-	Global.TabSize = 4
-	Global.TypeStringTimeout = 30 * time.Second
+	KeyDelay = 2 * time.Millisecond
+	KeyPressDuration = 2 * time.Millisecond
+	ModPressDuration = 2 * time.Millisecond
+	MaxCharacters = 5000
+	TabsToSpaces = false
+	TabSize = 4
+	TypeString.Timeout = 30 * time.Second
 }
