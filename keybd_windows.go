@@ -111,11 +111,18 @@ func KeyPress(key uint16, flags winapi.KiFlags) error {
 	return winapi.SendInput(keyEvent(key, flags))
 }
 
-// KeyPressAndRelease sends a key-down event and a key-up event with a brief
-// pause in between to help simulate an actual keystroke. The duration of the
-// pause is defined by [Global].
+// KeyRelease sends a key-up event and is intended to be used after a call to
+// [KeyPress].
 // It returns an error if the call fails.
-func KeyPressAndRelease(key uint16, flags winapi.KiFlags) error {
+func KeyRelease(key uint16, flags winapi.KiFlags) error {
+	return winapi.SendInput(keyEvent(key, flags|winapi.KEYEVENTF_KEYUP))
+}
+
+// KeyTap sends a key-down event and a key-up event with a brief pause in
+// between to help simulate an actual keystroke. The duration of the pause is
+// defined by [Global].
+// It returns an error if the call fails.
+func KeyTap(key uint16, flags winapi.KiFlags) error {
 	var errs []error
 
 	if err := KeyPress(key, flags); err != nil {
@@ -131,13 +138,6 @@ func KeyPressAndRelease(key uint16, flags winapi.KiFlags) error {
 	return errors.Join(errs...)
 }
 
-// KeyRelease sends a key-up event and is intended to be used after a call to
-// [KeyPress].
-// It returns an error if the call fails.
-func KeyRelease(key uint16, flags winapi.KiFlags) error {
-	return winapi.SendInput(keyEvent(key, flags|winapi.KEYEVENTF_KEYUP))
-}
-
 // TypeStr types str using the [Global] options and ensures accuracy by
 // attaching the current thread to the thread of the foreground window and
 // temporary blocking input while attached. A timeout prevents the function call
@@ -148,7 +148,7 @@ func TypeStr(str string) (err error) {
 	if len(str) == 0 {
 		return nil
 	} else if len(str) > Global.MaxCharacters {
-		return fmt.Errorf("exceeds max character limit")
+		return fmt.Errorf("%s", ErrMaxCharacter)
 	}
 
 	hwnd := windows.GetForegroundWindow()
@@ -205,17 +205,13 @@ func TypeStr(str string) (err error) {
 	go func() {
 		select {
 		case <-time.After(Global.TypeStringTimeout):
-			fmt.Println("Exceeded timeout... forcing cleanup")
+			errs = append(errs, fmt.Errorf("%s", ErrTimeout))
 			if blocked {
-				fmt.Println("Unblocking input...")
 				_ = winapi.BlockInput(false)
 			}
 			if attached {
-				fmt.Println("Detaching thread...")
 				_ = winapi.AttachThreadInput(tidAttach, tidAttachTo, false)
 			}
-
-			fmt.Println("Done")
 		case <-done:
 		}
 	}()
@@ -302,7 +298,7 @@ func typeStr(str string, hkl winapi.Handle) (err error) {
 		}
 
 		for range numTaps {
-			if err = KeyPressAndRelease(vsc, modFlags); err != nil {
+			if err = KeyTap(vsc, modFlags); err != nil {
 				errMap[E_KEY_DOWN_UP]++
 			}
 		}
