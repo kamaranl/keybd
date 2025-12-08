@@ -2,13 +2,14 @@
     @header KEYBD_H
     KEYBD_H implements functions that allow manipulation of the keyboard.
     @language C
-    @updated 2025-11-14
+    @updated 2025-12-02
     @author Kamaran Layne
 */
 #ifndef KEYBD_H
 #define KEYBD_H
 
 #include <Carbon/Carbon.h>
+#include <dispatch/dispatch.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -38,6 +39,10 @@ void set_LastErrorMessage(const char *__format, ...) {
   snprintf(LastErrorMessage, sizeof(LastErrorMessage), "%s %s", prefix,
            message);
 }
+
+volatile int AbortFlag = 0;
+
+void AbortOperation() { AbortFlag = 1; }
 
 /*!
     @const kVK_None
@@ -102,9 +107,23 @@ Modifier StandardMods[2] = {
 };
 
 /*!
+    @function CalledOnMainThread
+    @abstract Specifies if a function is called on the main thread.
+    @returns
+        1: True | 0: False
+*/
+int CalledOnMainThread() {
+  if (dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL) ==
+      dispatch_queue_get_label(dispatch_get_main_queue())) {
+    return 1;
+  }
+
+  return 0;
+}
+
+/*!
     @function TranslateChar
-    @abstract Translates a character into its virtual key code and modifier
-   mask.
+    @abstract Translates a char into a virtual key code and modifier mask.
     @param c
         Character to translate.
     @param kli
@@ -157,21 +176,32 @@ KeyTranslation TranslateChar(UniChar c, KeyboardLayoutInfo kli) {
         KeyboardLayoutInfo
 */
 KeyboardLayoutInfo GetKeyboardLayoutInfo() {
-  KeyboardLayoutInfo info = {0};
+  static KeyboardLayoutInfo info = {0};
+  static bool isCached = false;
 
-  TISInputSourceRef layoutRef = TISCopyCurrentKeyboardLayoutInputSource();
-  if (!layoutRef)
+  if (isCached) {
     return info;
-
-  CFDataRef layoutData = (CFDataRef)TISGetInputSourceProperty(
-      layoutRef, kTISPropertyUnicodeKeyLayoutData);
-
-  if (layoutData) {
-    info.kbLayout = (UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
-    info.kbType = LMGetKbdType();
   }
 
-  CFRelease(layoutRef);
+  static void (^fn)(void) = ^{
+    TISInputSourceRef layoutRef = TISCopyCurrentKeyboardLayoutInputSource();
+    CFDataRef layoutData = (CFDataRef)TISGetInputSourceProperty(
+        layoutRef, kTISPropertyUnicodeKeyLayoutData);
+
+    if (layoutData) {
+      info.kbLayout = (UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
+      info.kbType = LMGetKbdType();
+      isCached = true;
+    }
+
+    CFRelease(layoutRef);
+  };
+
+  if (CalledOnMainThread()) {
+    fn();
+  } else {
+    dispatch_sync(dispatch_get_main_queue(), fn);
+  }
 
   return info;
 }
@@ -358,6 +388,12 @@ int TypeStr(const char *str, int modPressDur, int keyPressDur, int keyDelay,
   current = TranslateChar(str[0], kli);
 
   for (size_t i = 0; i < len; i++) {
+    if (AbortFlag) {
+      AbortFlag = 0;
+      set_LastErrorMessage("Operation aborted");
+      return 0;
+    }
+
     UniChar c = str[i];
     CGEventFlags flags = 0;
 

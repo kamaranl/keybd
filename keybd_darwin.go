@@ -2,7 +2,7 @@
 
 package keybd
 
-// #cgo LDFLAGS: -framework Carbon
+// #cgo LDFLAGS: -framework Carbon -framework Foundation
 // #import "keybd_darwin.h"
 import "C"
 
@@ -54,6 +54,23 @@ type Modifier = struct {
 	Mask uint16
 	VK   uint16
 	Flag uint64
+}
+
+// AbortTypeStr safely aborts any previous calls to [TypeStr].
+func AbortTypeStr() {
+	TypeString.mu.Lock()
+	defer TypeString.mu.Unlock()
+
+	if TypeString.abort == nil {
+		return
+	}
+
+	select {
+	case <-TypeString.abort:
+		return
+	default:
+		close(TypeString.abort)
+	}
 }
 
 // GetKeyboardLayoutInfo retrieves the layout and type for the local machine.
@@ -122,27 +139,33 @@ func KeyRelease(key uint16, flags uint64) error {
 
 // KeyTap sends a key-down event and a key-up event with a brief pause in
 // between to help simulate an actual keystroke. The duration of the pause is
-// defined by [Global].
+// defined by KeyPressDuration at the top level.
 // It returns an error if the call fails.
 func KeyTap(key uint16, flags uint64) error {
-	if r1 := C.KeyTap(C.CGKeyCode(key), C.CGEventFlags(flags), C.int(Global.KeyPressDuration)); r1 == 0 {
+	if r1 := C.KeyTap(C.CGKeyCode(key), C.CGEventFlags(flags), C.int(KeyPressDuration)); r1 == 0 {
 		return fmt.Errorf("%s", C.GoString(&C.LastErrorMessage[0]))
 	}
 
 	return nil
 }
 
-// TypeStr types str using the [Global] options. A timeout prevents the function
-// call from hanging indefinitely.
+// TypeStr types str using the options defined at the top level. A timeout
+// prevents the function call from hanging indefinitely while an abort channel
+// allows aborting the operation.
 // It returns an error if the call fails.
 func TypeStr(str string) (err error) {
 	if len(str) == 0 {
 		return nil
-	} else if len(str) > Global.MaxCharacters {
+	} else if len(str) > MaxCharacters {
 		return fmt.Errorf("%s", ErrMaxCharacter)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), Global.TypeStringTimeout)
+	TypeString.mu.Lock()
+	TypeString.abort = make(chan struct{})
+	abort := TypeString.abort
+	TypeString.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), TypeString.Timeout)
 	defer cancel()
 
 	done := make(chan error, 1)
@@ -152,7 +175,11 @@ func TypeStr(str string) (err error) {
 	case err := <-done:
 		return err
 	case <-ctx.Done():
+		C.AbortOperation()
 		return fmt.Errorf("%s", ErrTimeout)
+	case <-abort:
+		C.AbortOperation()
+		return fmt.Errorf("%s", ErrAborted)
 	}
 }
 
@@ -164,11 +191,11 @@ func typeStr(str string) (err error) {
 
 	if r1 := C.TypeStr(
 		cStr,
-		C.int(Global.ModPressDuration/time.Microsecond),
-		C.int(Global.KeyPressDuration/time.Microsecond),
-		C.int(Global.KeyDelay/time.Microsecond),
-		C.int(boolToInt(Global.TabsToSpaces)),
-		C.int(Global.TabSize),
+		C.int(ModPressDuration/time.Microsecond),
+		C.int(KeyPressDuration/time.Microsecond),
+		C.int(KeyDelay/time.Microsecond),
+		C.int(boolToInt(TabsToSpaces)),
+		C.int(TabSize),
 	); r1 == 0 {
 		return fmt.Errorf("%s", C.GoString(&C.LastErrorMessage[0]))
 	}
