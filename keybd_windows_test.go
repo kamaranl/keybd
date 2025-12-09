@@ -260,8 +260,8 @@ func TestTypeStrWithOpts(t *testing.T) {
 		},
 	}
 
-	keybd.Global.TabsToSpaces = true
-	keybd.Global.TabSize = 11
+	keybd.TabsToSpaces = true
+	keybd.TabSize = 11
 
 	test.Countdown(3)
 
