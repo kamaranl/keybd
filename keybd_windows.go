@@ -3,6 +3,7 @@
 package keybd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -35,6 +36,8 @@ const (
 	MOD_LCTRL
 	MOD_LALT
 )
+
+var abortFlag bool
 
 // StandardMods is a [Modifier] slice of the standard modifier keys.
 var StandardMods = []Modifier{
@@ -129,7 +132,7 @@ func KeyTap(key uint16, flags winapi.KiFlags) error {
 		errs = append(errs, err)
 	}
 
-	time.Sleep(Global.KeyPressDuration)
+	time.Sleep(KeyPressDuration)
 
 	if err := KeyRelease(key, flags); err != nil {
 		errs = append(errs, err)
@@ -147,7 +150,7 @@ func KeyTap(key uint16, flags winapi.KiFlags) error {
 func TypeStr(str string) (err error) {
 	if len(str) == 0 {
 		return nil
-	} else if len(str) > Global.MaxCharacters {
+	} else if len(str) > TypeString.MaxCharacters {
 		return fmt.Errorf("%s", ErrMaxCharacter)
 	}
 
@@ -158,6 +161,7 @@ func TypeStr(str string) (err error) {
 		pid         uint32
 		tidAttachTo uint32
 	)
+
 	if hwnd != 0 {
 		tidAttachTo, err = windows.GetWindowThreadProcessId(hwnd, &pid)
 		if err != nil {
@@ -201,28 +205,42 @@ func TypeStr(str string) (err error) {
 		}()
 	}
 
-	done := make(chan struct{})
+	TypeString.mu.Lock()
+	TypeString.abort = make(chan struct{})
+	abort := TypeString.abort
+	TypeString.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), TypeString.Timeout)
+	defer cancel()
+
+	done := make(chan error, 1)
 	go func() {
-		select {
-		case <-time.After(Global.TypeStringTimeout):
-			errs = append(errs, fmt.Errorf("%s", ErrTimeout))
-			if blocked {
-				_ = winapi.BlockInput(false)
-			}
-			if attached {
-				_ = winapi.AttachThreadInput(tidAttach, tidAttachTo, false)
-			}
-		case <-done:
-		}
+		hkl := windows.GetKeyboardLayout(tidAttachTo)
+		done <- typeStr(str, hkl)
 	}()
 
-	hkl := windows.GetKeyboardLayout(tidAttachTo)
-	if err = typeStr(str, hkl); err != nil {
-		errs = append(errs, err)
+	cleanup := func() {
+		if blocked {
+			_ = winapi.BlockInput(false)
+		}
+		if attached {
+			_ = winapi.AttachThreadInput(tidAttach, tidAttachTo, false)
+		}
 	}
-	close(done)
 
-	return errors.Join(errs...)
+	select {
+	case err := <-done:
+		errs = append(errs, err)
+		return errors.Join(errs...)
+	case <-ctx.Done():
+		cleanup()
+		abortFlag = true
+		return fmt.Errorf("%s", ErrTimeout)
+	case <-abort:
+		cleanup()
+		abortFlag = true
+		return fmt.Errorf("%s", ErrAborted)
+	}
 }
 
 // keyEvent creates an input that can be processed by [winapi.SendInput].
@@ -284,17 +302,22 @@ func typeStr(str string, hkl winapi.Handle) (err error) {
 	}
 
 	for i, r := range runes {
+		if abortFlag {
+			abortFlag = false
+			return fmt.Errorf("%s", ErrAborted)
+		}
+
 		modFlags := winapi.KEYEVENTF_SCANCODE
 		if modsSet, errCount := setMods(modFlags, mods, 0); errCount != 0 {
 			errMap[E_SET_MODS] += errCount
 		} else if modsSet {
-			time.Sleep(Global.ModPressDuration)
+			time.Sleep(TypeString.ModPressDuration)
 		}
 
 		numTaps := 1
-		if r == '\t' && Global.TabsToSpaces {
+		if r == '\t' && TypeString.TabsToSpaces {
 			vsc = VSC_SPACE
-			numTaps = Global.TabSize
+			numTaps = TypeString.TabSize
 		}
 
 		for range numTaps {
@@ -319,7 +342,7 @@ func typeStr(str string, hkl winapi.Handle) (err error) {
 		if i < iLast {
 			vsc = vscNext
 			mods = modsNext
-			time.Sleep(Global.KeyDelay)
+			time.Sleep(TypeString.KeyDelay)
 		}
 	}
 
