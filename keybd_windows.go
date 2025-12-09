@@ -67,6 +67,8 @@ func RuneToVK(r rune, hkl winapi.Handle) (code byte, shift byte, err error) {
 		return windows.VK_RETURN, 0, nil
 	case '\t':
 		return windows.VK_TAB, 0, nil
+	case ' ':
+		return windows.VK_SPACE, 0, nil
 	}
 
 	return winapi.VkKeyScanExW(int16(r), hkl)
@@ -85,6 +87,8 @@ func RuneToVSC(r rune, hkl winapi.Handle) (code uint16, shift byte, err error) {
 		return VSC_RETURN, 0, nil
 	case '\t':
 		return VSC_TAB, 0, nil
+	case ' ':
+		return VSC_SPACE, 0, nil
 	}
 
 	vk, shift, err := winapi.VkKeyScanExW(int16(r), hkl)
