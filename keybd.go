@@ -14,33 +14,34 @@ const (
 	ErrTimeout      = "timeout exceeded"
 )
 
-var (
+// KeyPressDuration is how long to wait after pressing a key before releasing
+// that same key.
+//
+// Default: 2 ms
+var KeyPressDuration time.Duration
+
+// TypeString is a struct that contains specific settings for [TypeStr].
+var TypeString struct {
 	// KeyDelay is how long to wait after releasing a key and before proceeding
 	// with pressing the next key.
 	//
-	// Default: 2ms
+	// Default: 2 ms
 	KeyDelay time.Duration
-
-	// KeyPressDuration is how long to wait after pressing a key and before
-	// releasing the same key.
-	//
-	// Default: 2ms
-	KeyPressDuration time.Duration
 
 	// ModPressDuration is how long to wait after pressing a modifier key and
 	// before releasing the same modifier key.
 	//
-	// Default: 2ms
+	// Default: 2 ms
 	ModPressDuration time.Duration
 
 	// MaxCharacters is the maximum amount of characters in a string that can be
-	// sent to [TypeStr].
+	// processed.
 	//
 	// Default: 5000
 	MaxCharacters int
 
 	// TabsToSpaces is a switch to enable the conversion of tabs to spaces as
-	// they are typed with [TypeStr].
+	// they are typed.
 	//
 	// Default: false
 	TabsToSpaces bool
@@ -51,25 +52,38 @@ var (
 	// Default: 4
 	TabSize int
 
-	// TypeString is a struct that contains specific settings for [TypeStr].
-	// These settings are initialized upon import.
-	TypeString struct {
-		// Timeout is how long [TypeStr] can run before finally aborting.
-		//
-		// Default: 30s
-		Timeout time.Duration
+	// Timeout is how long [TypeStr] can run before aborting.
+	//
+	// Default: 30 s
+	Timeout time.Duration
 
-		abort chan struct{}
-		mu    sync.Mutex
+	abort chan struct{}
+	mu    sync.Mutex
+}
+
+// AbortTypeStr safely aborts any previous calls to [TypeStr].
+func AbortTypeStr() {
+	TypeString.mu.Lock()
+	defer TypeString.mu.Unlock()
+
+	if TypeString.abort == nil {
+		return
 	}
-)
+
+	select {
+	case <-TypeString.abort:
+		return
+	default:
+		close(TypeString.abort)
+	}
+}
 
 func init() {
-	KeyDelay = 2 * time.Millisecond
 	KeyPressDuration = 2 * time.Millisecond
-	ModPressDuration = 2 * time.Millisecond
-	MaxCharacters = 5000
-	TabsToSpaces = false
-	TabSize = 4
+	TypeString.KeyDelay = 2 * time.Millisecond
+	TypeString.ModPressDuration = 2 * time.Millisecond
+	TypeString.MaxCharacters = 5000
+	TypeString.TabsToSpaces = false
+	TypeString.TabSize = 4
 	TypeString.Timeout = 30 * time.Second
 }
