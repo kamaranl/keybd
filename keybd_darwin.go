@@ -56,23 +56,6 @@ type Modifier = struct {
 	Flag uint64
 }
 
-// AbortTypeStr safely aborts any previous calls to [TypeStr].
-func AbortTypeStr() {
-	TypeString.mu.Lock()
-	defer TypeString.mu.Unlock()
-
-	if TypeString.abort == nil {
-		return
-	}
-
-	select {
-	case <-TypeString.abort:
-		return
-	default:
-		close(TypeString.abort)
-	}
-}
-
 // GetKeyboardLayoutInfo retrieves the layout and type for the local machine.
 // It always returns a [KeyboardLayoutInfo].
 func GetKeyboardLayoutInfo() KeyboardLayoutInfo {
@@ -156,7 +139,7 @@ func KeyTap(key uint16, flags uint64) error {
 func TypeStr(str string) (err error) {
 	if len(str) == 0 {
 		return nil
-	} else if len(str) > MaxCharacters {
+	} else if len(str) > TypeString.MaxCharacters {
 		return fmt.Errorf("%s", ErrMaxCharacter)
 	}
 
@@ -191,11 +174,11 @@ func typeStr(str string) (err error) {
 
 	if r1 := C.TypeStr(
 		cStr,
-		C.int(ModPressDuration/time.Microsecond),
+		C.int(TypeString.ModPressDuration/time.Microsecond),
 		C.int(KeyPressDuration/time.Microsecond),
-		C.int(KeyDelay/time.Microsecond),
-		C.int(boolToInt(TabsToSpaces)),
-		C.int(TabSize),
+		C.int(TypeString.KeyDelay/time.Microsecond),
+		C.int(boolToInt(TypeString.TabsToSpaces)),
+		C.int(TypeString.TabSize),
 	); r1 == 0 {
 		return fmt.Errorf("%s", C.GoString(&C.LastErrorMessage[0]))
 	}

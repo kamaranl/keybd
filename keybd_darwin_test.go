@@ -215,8 +215,8 @@ func TestRealTypeStrWithOpts(t *testing.T) {
 		},
 	}
 
-	keybd.TabsToSpaces = true
-	keybd.TabSize = 11
+	keybd.TypeString.TabsToSpaces = true
+	keybd.TypeString.TabSize = 11
 
 	test.Countdown(3)
 
