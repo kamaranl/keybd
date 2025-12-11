@@ -12,6 +12,8 @@ const (
 	ErrAborted      = "operation aborted"
 	ErrMaxCharacter = "character limit exceeded"
 	ErrTimeout      = "timeout exceeded"
+	ErrUnknown      = "error unknown"
+	ErrUncaught     = "uncaught error"
 )
 
 // KeyPressDuration is how long to wait after pressing a key before releasing
@@ -57,8 +59,11 @@ var TypeString struct {
 	// Default: 30 s
 	Timeout time.Duration
 
+	// abort is a channel used in [AbortTypeStr] and [TypeStr].
 	abort chan struct{}
-	mu    sync.Mutex
+
+	// mu is a Mutex used for syncing the memory before/after creating [abort].
+	mu sync.Mutex
 }
 
 // AbortTypeStr safely aborts any previous calls to [TypeStr].
