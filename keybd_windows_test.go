@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/kamaranl/gotools/test"
 	"github.com/kamaranl/keybd"
 	"github.com/kamaranl/winapi"
-	"github.com/kamaranl/x/test"
 	"golang.org/x/sys/windows"
 )
 

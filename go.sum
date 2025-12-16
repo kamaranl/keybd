@@ -1,8 +1,6 @@
-github.com/kamaranl/go_private v0.0.0-20251107203659-58218ddc72d7 h1:TTKertsjv2XAn7VWbHKhPQscqrBIyUp/p66oMkeFY1s=
-github.com/kamaranl/go_private v0.0.0-20251107203659-58218ddc72d7/go.mod h1:0fXwwLvxd01g47HFruATghRWhPc/ReeinOf+LbRhQnk=
-github.com/kamaranl/winapi v0.0.1 h1:4sf1jKtYlXm7HS1vnkuTAi8rffkcLxEI2LMgTSy2Ccg=
-github.com/kamaranl/winapi v0.0.1/go.mod h1:i0YvKeoXPIaO22/bVWRZXOq6V0jfzrR8a2Lg63eLYzA=
-github.com/kamaranl/x v0.0.0-20251211001441-51adc5a64240 h1:0fG3nq7+OwOdHR/9HkiVRvRPqaAqkEMtpIsWt7dwAdo=
-github.com/kamaranl/x v0.0.0-20251211001441-51adc5a64240/go.mod h1:nj+uqu9emj9S0heqEvZIvc4nm5zhEnIh0Wnr+nNSb0E=
+github.com/kamaranl/gotools v0.0.0-20251216151812-d597b0647b9a h1:pgy2Bxq5d14gmjiNryzbOqf2GmqKXRe1LAcqW5jIo/U=
+github.com/kamaranl/gotools v0.0.0-20251216151812-d597b0647b9a/go.mod h1:PYwV8+m0pn4VZ5EaOdH6GEMwyeycw+Py07yQXfniO5Q=
+github.com/kamaranl/winapi v0.0.2 h1:bgDFXq/3AzuIr0lRD79dBvnUysLEZ4+h2vlkEK6PS14=
+github.com/kamaranl/winapi v0.0.2/go.mod h1:duCEWYflrOCHLshB5ilyao/O1FzKkaEFIxpTrN34y50=
 golang.org/x/sys v0.38.0 h1:3yZWxaJjBmCWXqhN1qh02AkOnCQ1poK6oF+a7xWL6Gc=
 golang.org/x/sys v0.38.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kamaranl/gotools/test"
 	"github.com/kamaranl/keybd"
-	"github.com/kamaranl/x/test"
 )
 
 var enabled = map[string]bool{
